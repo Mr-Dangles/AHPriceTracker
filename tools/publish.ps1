@@ -26,6 +26,8 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 [IO.Compression.ZipFile]::CreateFromDirectory($stage, $zip)
 
 Push-Location $root
+# git and gh print progress on stderr; don't let that stop the script (exit codes are checked instead)
+$ErrorActionPreference = 'Continue'
 try {
     git add -A
     git diff --cached --quiet
