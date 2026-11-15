@@ -22,8 +22,15 @@ Get-ChildItem $root -Force | Where-Object { $_.Name -notin @('.git', 'dist', '.g
     Copy-Item -Destination (Join-Path $stage 'AHPriceTracker') -Recurse -Force
 Remove-Item -Recurse -Force (Join-Path $stage 'AHPriceTracker\tools\cache') -ErrorAction SilentlyContinue
 $zip = Join-Path $dist 'AHPriceTracker.zip'
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-[IO.Compression.ZipFile]::CreateFromDirectory($stage, $zip)
+Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+# Entries use forward slashes so every unzip tool and addon manager (WowUp etc.) reads the folders right.
+$archive = [IO.Compression.ZipFile]::Open($zip, 'Create')
+try {
+    foreach ($file in Get-ChildItem $stage -Recurse -File) {
+        $name = $file.FullName.Substring($stage.Length + 1) -replace '\\', '/'
+        [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $file.FullName, $name)
+    }
+} finally { $archive.Dispose() }
 
 Push-Location $root
 # git and gh print progress on stderr; don't let that stop the script (exit codes are checked instead)
