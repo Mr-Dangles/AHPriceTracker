@@ -18,6 +18,17 @@ local MERGE_WINDOW   = 30   -- results arriving within this window update the la
 local MARKET_FRACTION = 0.15 -- "market" price = avg unit price of the cheapest 15% of units
 local DISCOVERY_GAP   = 1.5     -- seconds between background scans of unpriced vendor items
 local DISCOVERY_STALE = 3 * 3600 -- vendor items without an in-game price this recent get rescanned
+local DISCOVERY_STALE_AWAY = 20 * 60 -- at other houses (neutral) visits are short: keep sweeping so volume builds up
+local function DiscoveryStale()
+    return (ns.house and ns.house ~= "home") and DISCOVERY_STALE_AWAY or DISCOVERY_STALE
+end
+-- Searches tried per auction house (an item tried at your faction's house still needs a search at the neutral one)
+local function Tried()
+    ns.discoveryTriedBy = ns.discoveryTriedBy or {}
+    local key = ns.house or "home"
+    ns.discoveryTriedBy[key] = ns.discoveryTriedBy[key] or {}
+    return ns.discoveryTriedBy[key]
+end
 
 local PREFIX = "|cff33ff99AH Tracker|r: "
 function ns.Print(fmt, ...)
@@ -406,10 +417,10 @@ end
 -- How many vendor items have never been priced in game (shown in the Flip Finder).
 function ns:UnpricedVendorCount()
     local n, now = 0, time()
-    local tried = self.discoveryTried or {}
+    local tried, stale = Tried(), DiscoveryStale()
     for id in pairs(self.vendor or {}) do
         -- (items searched recently that the AH returned nothing for don't count as waiting)
-        if not (self.flipPrices and self.flipPrices[id]) and now - (tried[id] or 0) >= DISCOVERY_STALE then n = n + 1 end
+        if not (self.flipPrices and self.flipPrices[id]) and now - (tried[id] or 0) >= stale then n = n + 1 end
     end
     return n
 end
@@ -418,16 +429,16 @@ end
 function ns:NextDiscovery()
     if not (self.vendor and self.flipPrices) then return nil end
     local now, best, bestT = time(), nil, nil
-    self.discoveryTried = self.discoveryTried or {}
+    local triedBy, stale = Tried(), DiscoveryStale()
     for id in pairs(self.vendor) do
         local fp = self.flipPrices[id]
         local t = fp and fp.t or 0
-        local tried = self.discoveryTried[id] or 0
-        if now - t >= DISCOVERY_STALE and now - tried >= DISCOVERY_STALE and (not bestT or t < bestT) then
+        local tried = triedBy[id] or 0
+        if now - t >= stale and now - tried >= stale and (not bestT or t < bestT) then
             best, bestT = id, t
         end
     end
-    if best then self.discoveryTried[best] = now end -- don't retry an item the AH has nothing for every few seconds
+    if best then triedBy[best] = now end -- don't retry an item the AH has nothing for every few seconds
     return best
 end
 

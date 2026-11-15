@@ -1,7 +1,7 @@
 ## Interface: 16001, 120000, 120001
 ## Title: AH Price Tracker
 ## Notes: Auction house prices and history, sales volume, flips, crafting profit, profit per item, your auctions and trades, auctionhouse.fyi market data, and scans shared with other users of the addon. /aht help for the manual.
-## Version: 1.9.0
+## Version: 1.9.1
 ## SavedVariables: AHPriceTrackerDB
 ## OptionalDeps: Auctionator
 ## IconTexture: Interface\Icons\INV_Misc_Coin_01
